@@ -1,159 +1,148 @@
-# Haat Food Delivery App 🍽️
+# Haat Food Delivery App
 
-A React Native food delivery app built for the Haat React Native Developer Assignment. This app demonstrates advanced React Native skills including complex scrolling behavior, sticky headers, and smooth navigation.
+A beautiful, modern food delivery application built with React Native and Expo, featuring a creative design with grid-based layouts.
 
-## Features ✨
+## 🎨 Design Features
 
-### 1. Markets List
-- **Category Display**: Beautiful grid layout showing food categories
-- **Navigation**: Tap any category to navigate to market details
-- **Modern UI**: Clean, card-based design with images and descriptions
+### Grid System
+- **Responsive Grid Layout**: Categories and food items are displayed in a clean 2-column grid
+- **Dynamic Spacing**: Automatic spacing calculations based on screen dimensions
+- **Consistent Margins**: Proper spacing between grid elements for visual harmony
 
-### 2. Market Detail with Advanced Scrolling
-- **Sticky Sub-Category Headers**: Sub-categories stick to the top while scrolling
-- **Automatic Category Updates**: Main categories update automatically during scroll
-- **Seamless Navigation**: Smooth scrolling between categories and sub-categories
-- **Item Visibility**: Items from adjacent categories visible at boundaries (no pagination)
+### Visual Design
+- **Gradient Backgrounds**: Beautiful orange-to-yellow gradients throughout the app
+- **Modern UI Elements**: Rounded corners, shadows, and smooth animations
+- **Food Icons**: Floating food emojis and decorative elements
+- **Color Scheme**: Warm, appetizing colors (#FF6B35, #F7931E, #FFD93D)
 
-### 3. Technical Implementation
-- **React Navigation**: Stack-based navigation between screens
-- **TypeScript**: Full type safety throughout the application
-- **API Integration**: Ready for Haat delivery API endpoints
-- **Responsive Design**: Works on all screen sizes
-- **Performance Optimized**: Efficient FlatList with sticky headers
+### Components
 
-## Requirements Met ✅
+#### MarketsList
+- Hero header with gradient background
+- Search bar with floating design
+- Category cards in 2x2 grid layout
+- "New" badges on category cards
+- Floating food icons for visual appeal
 
-- ✅ Markets list with category display
-- ✅ Navigation to market detail page
-- ✅ Categories, sub-categories, and items display
-- ✅ Sticky sub-category headers
-- ✅ Automatic category updates during scroll
-- ✅ Smooth scrolling behavior
-- ✅ Items from adjacent categories visible at boundaries
-- ✅ API integration ready (GET: `/markets/4532` and `/markets/4532/categories/{categoryId}`)
-- ✅ Image handling with base URL: `https://im-staging.haat.delivery/`
+#### MarketDetail
+- Enhanced header with cart functionality
+- Category tabs for easy navigation
+- Food items displayed in responsive grid
+- Price tags and action buttons
+- Beautiful category headers with gradients
 
-## Installation & Setup 🚀
+#### LoadingSpinner
+- Animated loading screen with rotating logo
+- Floating food icons with pulse animations
+- Gradient background with wave decorations
+- Professional loading experience
+
+## 🚀 Getting Started
 
 ### Prerequisites
 - Node.js (v16 or higher)
 - Expo CLI
 - iOS Simulator or Android Emulator
 
-### Steps
-1. **Install Dependencies**
-   ```bash
-   yarn install
-   ```
+### Installation
+```bash
+# Install dependencies
+npm install
 
-2. **Start the Development Server**
-   ```bash
-   yarn start
-   ```
+# Start the development server
+npx expo start
 
-3. **Run on Device/Simulator**
-   - Press `i` for iOS Simulator
-   - Press `a` for Android Emulator
-   - Scan QR code with Expo Go app on your phone
+# Run on iOS
+npx expo start --ios
 
-## Project Structure 📁
-
-```
-Haat/
-├── components/           # React Native components
-│   ├── MarketsList.tsx  # Markets list screen
-│   ├── MarketDetail.tsx # Market detail with advanced scrolling
-│   └── LoadingSpinner.tsx # Loading component
-├── services/            # API services
-│   └── api.ts          # HTTP client and API functions
-├── types/               # TypeScript interfaces
-│   └── index.ts        # Data type definitions
-├── data/                # Mock data for testing
-│   └── mockData.ts     # Sample market data
-├── App.tsx              # Main app component
-└── package.json         # Dependencies and scripts
+# Run on Android
+npx expo start --android
 ```
 
-## API Integration 🔌
+## 📱 Features
 
-The app is configured to work with the Haat delivery API:
+- **Food Categories**: Browse different food categories
+- **Search Functionality**: Search for your favorite foods
+- **Grid Layout**: Clean, organized display of categories and items
+- **Responsive Design**: Adapts to different screen sizes
+- **Modern UI**: Beautiful animations and visual effects
+- **Image Integration**: Uses Haat staging API for food images
 
-- **Base URL**: `https://user-new-app-staging.internal.haat.delivery/api`
-- **Image Base URL**: `https://im-staging.haat.delivery/`
-- **Endpoints**:
-  - `GET /markets/4532` - Get market details
-  - `GET /markets/4532/categories/{categoryId}` - Get category details
+## 🎯 Grid Configuration
 
-Currently using mock data for development. To switch to real API:
-1. Uncomment the API call in `App.tsx`
-2. Comment out the mock data import
-3. Ensure your device can access the internal API endpoints
+The app uses a sophisticated grid system:
 
-## Key Technical Features 🛠️
+```javascript
+const GRID_COLUMNS = 2;
+const GRID_SPACING = 16;
+const GRID_MARGIN = 20;
+const CARD_WIDTH = (width - (GRID_MARGIN * 2) - (GRID_SPACING * (GRID_COLUMNS - 1))) / GRID_COLUMNS;
+```
 
-### Advanced Scrolling Implementation
-- **FlatList with Sticky Headers**: Sub-categories stick to the top
-- **Scroll Position Tracking**: Automatic category detection during scroll
-- **Smooth Animations**: Animated scroll events and transitions
-- **Performance Optimization**: Efficient rendering with proper key extraction
+This ensures:
+- Consistent spacing between elements
+- Responsive card widths
+- Proper alignment across different devices
+- Professional, organized appearance
 
-### Navigation & State Management
-- **React Navigation v6**: Modern navigation with TypeScript support
-- **Route Parameters**: Passing selected category IDs between screens
-- **State Management**: React hooks for local state management
+## 🖼️ Image Sources
 
-### UI/UX Design
-- **Modern Design Language**: Clean, card-based interface
-- **Responsive Layout**: Adapts to different screen sizes
-- **Visual Feedback**: Active states, shadows, and smooth interactions
-- **Accessibility**: Proper touch targets and readable text
+All food images are sourced from the Haat staging API:
+- Base URL: `https://im-staging.haat.delivery/`
+- Categories: `/categories/[category-name].jpg`
+- Items: `/items/[item-name].jpg`
 
-## Testing the App 🧪
+## 🎨 Color Palette
 
-1. **Markets List**: View all food categories in a grid layout
-2. **Category Navigation**: Tap any category to see market details
-3. **Scrolling Behavior**: 
-   - Scroll through items to see sticky sub-category headers
-   - Notice automatic category tab updates
-   - See items from adjacent categories at boundaries
-4. **Category Tabs**: Tap category tabs to jump to specific sections
+- **Primary Orange**: #FF6B35
+- **Secondary Orange**: #F7931E
+- **Accent Yellow**: #FFD93D
+- **Text Dark**: #2c3e50
+- **Text Light**: #7f8c8d
+- **Success Green**: #27ae60
+- **Error Red**: #FF4757
 
-## Future Enhancements 🚀
+## 🔧 Technical Details
 
-- **Real-time Updates**: Live order status and inventory
-- **Search & Filter**: Find specific items quickly
-- **User Authentication**: Login and user profiles
-- **Order Management**: Add to cart and checkout flow
-- **Push Notifications**: Order updates and promotions
-- **Offline Support**: Cache data for offline viewing
+- **Framework**: React Native with Expo
+- **Navigation**: React Navigation v6
+- **Gradients**: Expo Linear Gradient
+- **Animations**: React Native Animated API
+- **TypeScript**: Full type safety
+- **Responsive**: Dynamic sizing based on device dimensions
 
-## Troubleshooting 🔧
+## 📱 Screenshots
 
-### Common Issues
-1. **Metro bundler errors**: Clear cache with `yarn start --clear`
-2. **Navigation errors**: Ensure all dependencies are installed
-3. **Image loading issues**: Check network connectivity and image URLs
+The app features:
+- Beautiful gradient headers
+- Clean grid layouts
+- Modern card designs
+- Smooth animations
+- Professional typography
+- Consistent spacing
 
-### Development Tips
-- Use React Native Debugger for better debugging
-- Enable Fast Refresh for faster development
-- Test on both iOS and Android for compatibility
+## 🚀 Future Enhancements
 
-## Contributing 🤝
+- [ ] Add to cart functionality
+- [ ] User authentication
+- [ ] Order tracking
+- [ ] Payment integration
+- [ ] Push notifications
+- [ ] Offline support
+- [ ] Dark mode theme
 
-This is a demonstration project for the Haat React Native Developer Assignment. The code showcases:
+## 🤝 Contributing
 
-- Modern React Native development practices
-- TypeScript implementation
-- Advanced UI/UX patterns
-- Performance optimization techniques
-- Clean, maintainable code structure
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-## License 📄
+## 📄 License
 
-This project is created for demonstration purposes as part of the Haat React Native Developer Assignment.
+This project is licensed under the 0BSD License.
 
 ---
 
-**Built with ❤️ using React Native, TypeScript, and Expo** 
+Built with ❤️ for Haat Food Delivery 
