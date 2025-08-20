@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,9 @@ import {
   Image,
   Dimensions,
   StatusBar,
-  SafeAreaView,
+  TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Category } from '../types';
 import { getImageUrl } from '../services/api';
@@ -53,9 +54,23 @@ const ImageWithFallback: React.FC<{ imagePath: string; style: any }> = ({ imageP
 };
 
 const MarketsList: React.FC<MarketsListProps> = ({ categories, onCategoryPress }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Filter categories based on search query
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return categories;
+    }
+    
+    const query = searchQuery.toLowerCase().trim();
+    return categories.filter(category => 
+      category.name.toLowerCase().includes(query)
+    );
+  }, [categories, searchQuery]);
+  
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
       
       {/* Hero Header with Gradient */}
       <LinearGradient
@@ -65,39 +80,52 @@ const MarketsList: React.FC<MarketsListProps> = ({ categories, onCategoryPress }
         style={styles.heroHeader}
       >
         <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>🍽️ Haat</Text>
+          <Text style={styles.heroTitle}>Haat</Text>
           <Text style={styles.heroSubtitle}>Delicious Food Delivered</Text>
           <Text style={styles.heroDescription}>
             Discover amazing flavors from the best restaurants in town
           </Text>
         </View>
         
-        {/* Floating Food Icons */}
-        <View style={styles.floatingIcons}>
-          <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>🍕</Text>
-          </View>
-          <View style={[styles.iconCircle, styles.iconCircle2]}>
-            <Text style={styles.iconText}>🍔</Text>
-          </View>
-          <View style={[styles.iconCircle, styles.iconCircle3]}>
-            <Text style={styles.iconText}>🍜</Text>
-          </View>
-        </View>
       </LinearGradient>
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <Text style={styles.searchIcon}>🔍</Text>
-          <Text style={styles.searchText}>Search for your favorite food...</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search for your favorite food..."
+            placeholderTextColor="#999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {searchQuery.trim() && (
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={() => setSearchQuery('')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.clearButtonText}>✕</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
       {/* Categories Section */}
       <View style={styles.categoriesSection}>
-        <Text style={styles.sectionTitle}>Food Categories</Text>
-        <Text style={styles.sectionSubtitle}>What are you craving today?</Text>
+        <Text style={styles.sectionTitle}>
+          {searchQuery.trim() ? 'Search Results' : 'Food Categories'}
+        </Text>
+        <Text style={styles.sectionSubtitle}>
+          {searchQuery.trim() 
+            ? `Found ${filteredCategories.length} category${filteredCategories.length !== 1 ? 'ies' : 'y'} for "${searchQuery}"`
+            : 'What are you craving today?'
+          }
+        </Text>
       </View>
 
       {/* Grid Container */}
@@ -106,8 +134,17 @@ const MarketsList: React.FC<MarketsListProps> = ({ categories, onCategoryPress }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.gridContent}
         >
-          <View style={styles.gridRow}>
-            {categories.map((category, index) => (
+          {filteredCategories.length === 0 && searchQuery.trim() ? (
+            <View style={styles.noResultsContainer}>
+              <Text style={styles.noResultsIcon}>🔍</Text>
+              <Text style={styles.noResultsTitle}>No categories found</Text>
+              <Text style={styles.noResultsSubtitle}>
+                Try searching for something else or browse all categories
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.gridRow}>
+              {filteredCategories.map((category, index) => (
               <TouchableOpacity
                 key={category.id}
                 style={[
@@ -138,11 +175,7 @@ const MarketsList: React.FC<MarketsListProps> = ({ categories, onCategoryPress }
                     colors={['transparent', 'rgba(0,0,0,0.7)']}
                     style={styles.categoryOverlay}
                   />
-                  
-                  {/* Category Badge */}
-                  <View style={styles.categoryBadge}>
-                    <Text style={styles.badgeText}>New</Text>
-                  </View>
+
                 </View>
                 
                 <View style={styles.categoryInfo}>
@@ -155,14 +188,11 @@ const MarketsList: React.FC<MarketsListProps> = ({ categories, onCategoryPress }
                 </View>
               </TouchableOpacity>
             ))}
-          </View>
+            </View>
+          )}
         </ScrollView>
       </View>
 
-      {/* Bottom Navigation Hint */}
-      <View style={styles.bottomHint}>
-        <Text style={styles.hintText}>👆 Tap on a category to explore</Text>
-      </View>
     </SafeAreaView>
   );
 };
@@ -173,44 +203,53 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   heroHeader: {
-    height: height * 0.35,
+    height: height * 0.4,
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 70,
     position: 'relative',
     overflow: 'hidden',
+    marginTop: -50,
   },
   heroContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
+    paddingTop: 40,
+    paddingBottom: 20,
   },
   heroTitle: {
     fontSize: 42,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.3)',
+    marginBottom: 16,
+    textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+    paddingHorizontal: 20,
+    lineHeight: 48,
   },
   heroSubtitle: {
-    fontSize: 20,
+    fontSize: 22,
     color: '#fff',
-    marginBottom: 12,
+    marginBottom: 16,
     fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
+    lineHeight: 28,
   },
   heroDescription: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: 18,
+    color: 'rgba(255,255,255,0.95)',
     textAlign: 'center',
-    lineHeight: 22,
-    textShadowColor: 'rgba(0,0,0,0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    lineHeight: 24,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
+    maxWidth: 500,
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   floatingIcons: {
     position: 'absolute',
@@ -222,36 +261,58 @@ const styles = StyleSheet.create({
   },
   iconCircle: {
     position: 'absolute',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    top: '20%',
-    right: '15%',
+    top: 120,
+    right: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   iconCircle2: {
-    top: '60%',
-    left: '10%',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    top: 200,
+    left: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   iconCircle3: {
-    top: '40%',
-    left: '70%',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    top: 160,
+    left: width - 80,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   iconText: {
-    fontSize: 24,
+    fontSize: 22,
   },
   searchContainer: {
     paddingHorizontal: 20,
-    marginTop: -25,
+    marginTop: -20,
     zIndex: 3,
+    marginBottom: 10,
   },
   searchBar: {
     backgroundColor: '#fff',
@@ -274,14 +335,29 @@ const styles = StyleSheet.create({
     marginRight: 12,
     color: '#666',
   },
-  searchText: {
+  searchInput: {
     fontSize: 16,
-    color: '#999',
+    color: '#333',
     flex: 1,
+    paddingVertical: 0,
+  },
+  clearButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#f1f3f4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  clearButtonText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: 'bold',
   },
   categoriesSection: {
     paddingHorizontal: 20,
-    paddingTop: 30,
+    paddingTop: 40,
     paddingBottom: 20,
   },
   sectionTitle: {
@@ -293,6 +369,30 @@ const styles = StyleSheet.create({
   sectionSubtitle: {
     fontSize: 16,
     color: '#7f8c8d',
+    lineHeight: 22,
+  },
+  noResultsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  noResultsIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  noResultsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  noResultsSubtitle: {
+    fontSize: 16,
+    color: '#7f8c8d',
+    textAlign: 'center',
     lineHeight: 22,
   },
   gridContainer: {

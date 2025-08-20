@@ -10,8 +10,9 @@ import {
   FlatList,
   Animated,
   StatusBar,
-  SafeAreaView,
+  Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MarketDetail as MarketDetailType, Category, SubCategory, Item, CategoryDetail } from '../types';
 import { getImageUrl, getCategoryDetail } from '../services/api';
@@ -64,11 +65,13 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [visibleCategory, setVisibleCategory] = useState<Category | null>(null);
   const [visibleSubCategory, setVisibleSubCategory] = useState<SubCategory | null>(null);
+  const lastScrollOffset = useRef<number>(0);
   
   const flatListRef = useRef<FlatList>(null);
-  const categoryRefs = useRef<{ [key: number]: number }>({});
-  const subCategoryRefs = useRef<{ [key: number]: number }>({});
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const categoryTabsScrollViewRef = useRef<ScrollView>(null);
+  const subCategoryTabsScrollViewRef = useRef<ScrollView>(null);
+
+
 
   // Debug: Log received props
   useEffect(() => {
@@ -111,10 +114,10 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
           setVisibleSubCategory(firstSubCategory);
         }
         
-        // Auto-scroll to the selected category after a short delay
+        // Auto-scroll to the selected category after the component has rendered
         setTimeout(() => {
           scrollToCategory(category.id);
-        }, 300);
+        }, 500);
       }
     } else if (categories.length > 0) {
       // Set first category as default if none selected
@@ -145,6 +148,30 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       }
     }
   }, [selectedCategory]);
+
+  // Smooth auto-scroll horizontal tabs when visible category changes
+  useEffect(() => {
+    if (visibleCategory && categoryTabsScrollViewRef.current) {
+      // Use a small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        smoothScrollCategoryTabsToVisible(visibleCategory);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [visibleCategory]);
+
+  // Smooth auto-scroll subcategory tabs when visible subcategory changes
+  useEffect(() => {
+    if (visibleSubCategory && subCategoryTabsScrollViewRef.current) {
+      // Use a small delay to ensure smooth transition
+      const timer = setTimeout(() => {
+        smoothScrollSubCategoryTabsToVisible(visibleSubCategory);
+      }, 400);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [visibleSubCategory]);
 
   const findCategoryById = (categoryId: number): Category | null => {
     const found = categories.find(cat => cat.id === categoryId);
@@ -244,97 +271,83 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       index: number;
     }> = [];
 
-    // Only show the selected category and its products
-    if (!selectedCategory) {
-      console.log('⚠️ No selected category, returning empty data');
+    console.log('🔄 Building FlatList data...');
+    console.log('📊 Categories count:', categories.length);
+    console.log('📊 Categories:', categories.map(c => ({ id: c.id, name: c.name })));
+
+    // Show all categories and their products
+    if (categories.length === 0) {
+      console.log('⚠️ No categories available, returning empty data');
       return data;
     }
 
-    console.log(`🎯 Building data for selected category: "${selectedCategory.name}" (ID: ${selectedCategory.id})`);
-    console.log('📊 Selected category data:', JSON.stringify(selectedCategory, null, 2));
+    console.log(`🎯 Building data for all ${categories.length} categories`);
 
-    // Add selected category header
-    data.push({
-      type: 'category',
-      id: `category-${selectedCategory.id}`,
-      category: selectedCategory,
-      index: data.length
-    });
-
-    // Store reference for scrolling
-    categoryRefs.current[selectedCategory.id] = data.length - 1;
-
-    // Add subcategories and products for the selected category only
-    if (selectedCategory.subCategories && selectedCategory.subCategories.length > 0) {
-      console.log(`📋 Processing ${selectedCategory.subCategories.length} subcategories`);
-      
-      selectedCategory.subCategories.forEach((subCategory, subIndex) => {
-        console.log(`📋 Adding subcategory: "${subCategory.name}" with ${subCategory.items?.length || 0} items`);
-        console.log('📊 Subcategory data:', JSON.stringify(subCategory, null, 2));
-        
-        // Add subcategory header
-        data.push({
-          type: 'subcategory',
-          id: `subcategory-${subCategory.id}`,
-          category: selectedCategory,
-          subCategory,
-          index: data.length
-        });
-
-        // Add items grid if there are products
-        if (subCategory.items && subCategory.items.length > 0) {
-          console.log(`🛍️ Adding ${subCategory.items.length} items for subcategory "${subCategory.name}"`);
-          
-          data.push({
-            type: 'items-grid',
-            id: `items-${subCategory.id}`,
-            category: selectedCategory,
-            subCategory,
-            items: subCategory.items,
-            index: data.length
-          });
-
-          // Store reference for scrolling
-          subCategoryRefs.current[subCategory.id] = data.length - 1;
-        } else {
-          console.log(`⚠️ Subcategory "${subCategory.name}" has no items`);
-          
-          // TEST: Add some dummy items to see if rendering works
-          console.log('🧪 Adding test items to verify rendering');
-          const testItems: Item[] = [
-            {
-              id: subCategory.id * 1000 + 1,
-              name: `Test Item 1 for ${subCategory.name}`,
-              description: 'This is a test item to verify rendering works',
-              price: 9.99,
-              image: 'items/test-item-1.jpg',
-              subCategoryId: subCategory.id
-            },
-            {
-              id: subCategory.id * 1000 + 2,
-              name: `Test Item 2 for ${subCategory.name}`,
-              description: 'Another test item to verify rendering works',
-              price: 14.99,
-              image: 'items/test-item-2.jpg',
-              subCategoryId: subCategory.id
-            }
-          ];
-          
-          data.push({
-            type: 'items-grid',
-            id: `items-${subCategory.id}-test`,
-            category: selectedCategory,
-            subCategory,
-            items: testItems,
-            index: data.length
-          });
-        }
-      });
-    } else {
-      console.log('⚠️ Selected category has no subcategories');
+    // Reorder categories to put selected category first
+    let orderedCategories = [...categories];
+    if (selectedCategory) {
+      console.log(`🎯 Reordering categories to put selected category "${selectedCategory.name}" first`);
+      // Remove selected category from current position
+      orderedCategories = orderedCategories.filter(cat => cat.id !== selectedCategory.id);
+      // Add selected category at the beginning
+      orderedCategories.unshift(selectedCategory);
+      console.log(`📊 Reordered categories:`, orderedCategories.map(c => c.name));
     }
 
-    console.log(`✅ Built data with ${data.length} items for category "${selectedCategory.name}"`);
+    // Process all categories in the new order
+    orderedCategories.forEach((category, categoryIndex) => {
+      console.log(`📊 Processing category: "${category.name}" (ID: ${category.id})`);
+      
+      // Add category header
+      data.push({
+        type: 'category',
+        id: `category-${category.id}`,
+        category: category,
+        index: data.length
+      });
+
+
+
+      // Add subcategories and products for this category
+      if (category.subCategories && category.subCategories.length > 0) {
+        console.log(`📋 Processing ${category.subCategories.length} subcategories for category "${category.name}"`);
+        
+        category.subCategories.forEach((subCategory, subIndex) => {
+          console.log(`📋 Adding subcategory: "${subCategory.name}" with ${subCategory.items?.length || 0} items`);
+          
+          // Add subcategory header
+          data.push({
+            type: 'subcategory',
+            id: `subcategory-${subCategory.id}`,
+            category: category,
+            subCategory,
+            index: data.length
+          });
+
+          // Add items grid if there are products
+          if (subCategory.items && subCategory.items.length > 0) {
+            console.log(`🛍️ Adding ${subCategory.items.length} items for subcategory "${subCategory.name}"`);
+            
+            data.push({
+              type: 'items-grid',
+              id: `items-${subCategory.id}`,
+              category: category,
+              subCategory,
+              items: subCategory.items,
+              index: data.length
+            });
+
+
+          } else {
+            console.log(`⚠️ Subcategory "${subCategory.name}" has no items`);
+          }
+        });
+      } else {
+        console.log(`⚠️ Category "${category.name}" has no subcategories`);
+      }
+    });
+
+    console.log(`✅ Built data with ${data.length} items for all categories`);
     console.log('📋 Final data structure:', data.map(item => ({
       type: item.type,
       id: item.id,
@@ -346,20 +359,23 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
     return data;
   };
 
+
+  
   const renderCategoryHeader = (category: Category) => {
-    const isSelected = selectedCategory && category.id === selectedCategory.id;
     const isVisible = visibleCategory && category.id === visibleCategory.id;
+    
+    // Calculate total items for this category
+    const totalItems = category.subCategories?.reduce((total, sub) => {
+      return total + (sub.items?.length || 0);
+    }, 0) || 0;
     
     return (
       <View style={[
         styles.categoryHeader,
-        isSelected && styles.selectedCategoryHeader,
-        isVisible && !isSelected && styles.visibleCategoryHeader
+        isVisible && styles.visibleCategoryHeader
       ]}>
         <LinearGradient
-          colors={isSelected 
-            ? ['rgba(255,107,53,0.2)', 'rgba(255,107,53,0.1)'] 
-            : isVisible
+          colors={isVisible
             ? ['rgba(255,107,53,0.15)', 'rgba(255,107,53,0.08)']
             : ['rgba(255,107,53,0.1)', 'rgba(255,107,53,0.05)']
           }
@@ -367,24 +383,17 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
         >
           <Text style={[
             styles.categoryHeaderTitle,
-            isSelected && styles.selectedCategoryHeaderTitle,
-            isVisible && !isSelected && styles.visibleCategoryHeaderTitle
+            isVisible && styles.visibleCategoryHeaderTitle
           ]}>
             {category.name}
           </Text>
           <Text style={[
             styles.categoryHeaderSubtitle,
-            isSelected && styles.selectedCategoryHeaderSubtitle,
-            isVisible && !isSelected && styles.visibleCategoryHeaderSubtitle
+            isVisible && styles.visibleCategoryHeaderSubtitle
           ]}>
-            {category.subCategories?.length || 0} subcategories available
+            {category.subCategories?.length || 0} subcategories • {totalItems} items
           </Text>
-          {isSelected && (
-            <View style={styles.selectedIndicator}>
-              <Text style={styles.selectedIndicatorText}>⭐ Selected</Text>
-            </View>
-          )}
-          {isVisible && !isSelected && (
+          {isVisible && (
             <View style={styles.visibleIndicator}>
               <Text style={styles.visibleIndicatorText}>👁️ Visible</Text>
             </View>
@@ -414,11 +423,6 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
         ]}>
           {subCategory.items?.length || 0} items
         </Text>
-        {isVisible && (
-          <View style={styles.visibleSubCategoryIndicator}>
-            <Text style={styles.visibleSubCategoryIndicatorText}>👁️</Text>
-          </View>
-        )}
       </View>
     );
   };
@@ -447,22 +451,21 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
                   <Text style={styles.placeholderText}>🍽️</Text>
                 </View>
               )}
-              <View style={styles.priceTag}>
-                <Text style={styles.priceTagText}>${item.price.toFixed(2)}</Text>
-              </View>
+
             </View>
             <View style={styles.itemInfo}>
               <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
               {item.description && (
                 <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>
               )}
+              <View style={styles.itemPriceContainer}>
+                <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
+              </View>
               <View style={styles.itemActions}>
                 <TouchableOpacity style={styles.addButton} activeOpacity={0.7}>
                   <Text style={styles.addButtonText}>+ Add</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.favoriteButton} activeOpacity={0.7}>
-                  <Text style={styles.favoriteButtonText}>❤️</Text>
-                </TouchableOpacity>
+              
               </View>
             </View>
           </TouchableOpacity>
@@ -471,70 +474,254 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
     </View>
   );
 
-  const handleScrollEndDrag = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    updateVisibleItems(offsetY);
-  };
 
-  const handleMomentumScrollEnd = (event: any) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    updateVisibleItems(offsetY);
+
+  const getCurrentSubCategoriesForTabs = () => {
+    // If we have a visible category, show its subcategories
+    if (visibleCategory) {
+      let subCategories = visibleCategory.subCategories || [];
+      
+      // If we have a selected subcategory, put it first
+      if (selectedSubCategory) {
+        subCategories = [
+          selectedSubCategory,
+          ...subCategories.filter(sub => sub.id !== selectedSubCategory.id)
+        ];
+      }
+      
+      return subCategories;
+    }
+    
+    // Otherwise, show subcategories from all categories
+    const allSubCategories: SubCategory[] = [];
+    categories.forEach(category => {
+      if (category.subCategories) {
+        allSubCategories.push(...category.subCategories);
+      }
+    });
+    
+    // If we have a selected subcategory, put it first
+    if (selectedSubCategory) {
+      return [
+        selectedSubCategory,
+        ...allSubCategories.filter(sub => sub.id !== selectedSubCategory.id)
+      ];
+    }
+    
+    return allSubCategories;
   };
 
   const updateVisibleItems = (offsetY: number) => {
+    // Throttle updates to prevent too frequent state changes
+    if (Math.abs(offsetY - (lastScrollOffset.current || 0)) < 50) {
+      return;
+    }
+    
+    // Update last scroll offset
+    lastScrollOffset.current = offsetY;
+    
     const data = getFlatListData();
-    const ITEM_HEIGHT = 200; // Approximate height of each item
-    const currentIndex = Math.floor(offsetY / ITEM_HEIGHT);
+    let currentVisibleCategory: Category | null = null;
+    let currentVisibleSubCategory: SubCategory | null = null;
     
-    console.log('📜 Scroll position:', offsetY, 'Current index:', currentIndex);
+    // Calculate which items are currently visible based on scroll position
+    let accumulatedHeight = 0;
     
-    if (currentIndex >= 0 && currentIndex < data.length) {
-      const currentItem = data[currentIndex];
-      console.log('📋 Current item:', currentItem.type, 'Category:', currentItem.category?.name);
+    for (const item of data) {
+      let itemHeight = 0;
       
-      let newVisibleCategory: Category | null = null;
-      let newVisibleSubCategory: SubCategory | null = null;
-      
-      if (currentItem.type === 'category') {
-        newVisibleCategory = currentItem.category;
-        console.log('🎯 Visible category:', newVisibleCategory.name);
-      } else if (currentItem.type === 'subcategory') {
-        newVisibleCategory = currentItem.category;
-        newVisibleSubCategory = currentItem.subCategory || null;
-        console.log('🎯 Visible subcategory:', newVisibleSubCategory?.name, 'in category:', newVisibleCategory.name);
-      } else if (currentItem.type === 'items-grid') {
-        newVisibleCategory = currentItem.category;
-        newVisibleSubCategory = currentItem.subCategory || null;
-        console.log('🎯 Visible items grid for subcategory:', newVisibleSubCategory?.name, 'in category:', newVisibleCategory.name);
+      if (item.type === 'category') {
+        itemHeight = 120; // Category header height
+      } else if (item.type === 'subcategory') {
+        itemHeight = 80; // Subcategory header height
+      } else if (item.type === 'items-grid') {
+        const itemCount = item.items?.length || 0;
+        const rows = Math.ceil(itemCount / 2); // 2 columns
+        itemHeight = rows * 200; // Approximate height per row
       }
       
-      // Update visible items
-      if (newVisibleCategory !== visibleCategory) {
-        setVisibleCategory(newVisibleCategory);
+      // Check if this item is currently visible in the viewport
+      const itemStart = accumulatedHeight;
+      const itemEnd = accumulatedHeight + itemHeight;
+      const viewportStart = offsetY;
+      const viewportEnd = offsetY + 800; // Approximate viewport height
+      
+      // Item is visible if it intersects with the viewport
+      if (itemStart < viewportEnd && itemEnd > viewportStart) {
+        if (item.type === 'category') {
+          currentVisibleCategory = item.category;
+          console.log(`👁️ Visible category: "${item.category.name}"`);
+        } else if (item.type === 'subcategory') {
+          currentVisibleCategory = item.category;
+          currentVisibleSubCategory = item.subCategory || null;
+          console.log(`👁️ Visible subcategory: "${item.subCategory?.name}" in category "${item.category.name}"`);
+        } else if (item.type === 'items-grid') {
+          currentVisibleCategory = item.category;
+          currentVisibleSubCategory = item.subCategory || null;
+          console.log(`👁️ Visible items grid for subcategory "${item.subCategory?.name}" in category "${item.category.name}"`);
+        }
+        break;
       }
-      if (newVisibleSubCategory !== visibleSubCategory) {
-        setVisibleSubCategory(newVisibleSubCategory);
-      }
+      
+      accumulatedHeight += itemHeight;
+    }
+    
+    // Update visible category and subcategory if they've changed
+    if (currentVisibleCategory !== visibleCategory) {
+      console.log(`🔄 Updating visible category from "${visibleCategory?.name || 'none'}" to "${currentVisibleCategory?.name}"`);
+      setVisibleCategory(currentVisibleCategory);
+    }
+    
+    if (currentVisibleSubCategory !== visibleSubCategory) {
+      console.log(`🔄 Updating visible subcategory from "${visibleSubCategory?.name || 'none'}" to "${currentVisibleSubCategory?.name || 'none'}"`);
+      setVisibleSubCategory(currentVisibleSubCategory);
+    }
+    
+    // Log the final state
+    if (currentVisibleCategory || currentVisibleSubCategory) {
+      console.log(`📍 Final visible state: Category "${currentVisibleCategory?.name}", Subcategory "${currentVisibleSubCategory?.name || 'none'}"`);
+    }
+    
+    // Log the final state
+    if (currentVisibleCategory || currentVisibleSubCategory) {
+      console.log(`📍 Final visible state: Category "${currentVisibleCategory?.name}", Subcategory "${currentVisibleSubCategory?.name || 'none'}"`);
     }
   };
 
-  const getCurrentSubCategoriesForTabs = () => {
-    return getCurrentSubCategories();
-  };
-
-  const scrollToCategory = (categoryId: number) => {
-    const targetIndex = categoryRefs.current[categoryId];
-    if (targetIndex !== undefined) {
-      flatListRef.current?.scrollToIndex({
-        index: targetIndex,
+  const smoothScrollCategoryTabsToVisible = (category: Category) => {
+    if (!categoryTabsScrollViewRef.current) {
+      return;
+    }
+    
+    // Find the index of the category in the reordered categories array
+    const orderedCategories = selectedCategory 
+      ? [selectedCategory, ...categories.filter(cat => cat.id !== selectedCategory.id)]
+      : categories;
+    
+    const categoryIndex = orderedCategories.findIndex(cat => cat.id === category.id);
+    
+    if (categoryIndex !== -1) {
+      // Calculate the target scroll position with better centering
+      const tabWidth = 120;
+      const containerWidth = 300; // Approximate container width
+      const targetScrollX = Math.max(0, (categoryIndex * tabWidth) - (containerWidth / 2) + (tabWidth / 2));
+      
+      console.log(`🎯 Smooth scrolling category tabs to show "${category.name}" at position ${targetScrollX}`);
+      
+      // Use smooth scrolling with easing
+      categoryTabsScrollViewRef.current.scrollTo({
+        x: targetScrollX,
+        y: 0,
         animated: true,
       });
     }
   };
 
+  const smoothScrollSubCategoryTabsToVisible = (subCategory: SubCategory) => {
+    if (!subCategoryTabsScrollViewRef.current) {
+      return;
+    }
+    
+    // Find the index of the subcategory in the current subcategories array
+    const currentSubCategories = getCurrentSubCategoriesForTabs();
+    const subCategoryIndex = currentSubCategories.findIndex(sub => sub.id === subCategory.id);
+    
+    if (subCategoryIndex !== -1) {
+      // Calculate the target scroll position with better centering
+      const tabWidth = 100;
+      const containerWidth = 250; // Approximate container width for subcategories
+      const targetScrollX = Math.max(0, (subCategoryIndex * tabWidth) - (containerWidth / 2) + (tabWidth / 2));
+      
+      console.log(`🎯 Smooth scrolling subcategory tabs to show "${subCategory.name}" at position ${targetScrollX}`);
+      
+      // Use smooth scrolling with easing
+      subCategoryTabsScrollViewRef.current.scrollTo({
+        x: targetScrollX,
+        y: 0,
+        animated: true,
+      });
+    }
+  };
+
+  const smoothScrollToOffset = (targetOffset: number, duration: number = 500) => {
+    console.log(`🎬 Smooth scrolling to offset ${targetOffset} over ${duration}ms`);
+    
+    if (!flatListRef.current) {
+      console.log('❌ FlatList ref not available');
+      return;
+    }
+    
+    // Use FlatList's built-in smooth scrolling
+    flatListRef.current.scrollToOffset({
+      offset: targetOffset,
+      animated: true,
+    });
+    
+    console.log(`✅ Smooth scroll command sent`);
+  };
+
+  const scrollToCategory = (categoryId: number) => {
+    console.log(`🎯 Attempting to scroll to category ID: ${categoryId}`);
+    
+    if (!flatListRef.current) {
+      console.log('❌ FlatList ref not available');
+      return;
+    }
+    
+    // Simple approach: find the category in the data and calculate offset
+    const data = getFlatListData();
+    console.log('📊 Data length:', data.length);
+    console.log('📊 Data items:', data.map(item => ({ type: item.type, categoryId: item.category?.id, categoryName: item.category?.name })));
+    
+    const categoryIndex = data.findIndex(item =>
+      item.type === 'category' && item.category.id === categoryId
+    );
+
+    if (categoryIndex !== -1) {
+      console.log(`✅ Found category at index: ${categoryIndex}`);
+      
+      // Calculate offset based on item heights
+      let offset = 0;
+      for (let i = 0; i < categoryIndex; i++) {
+        const item = data[i];
+        if (item.type === 'category') {
+          offset += 120; // Category header height
+        } else if (item.type === 'subcategory') {
+          offset += 80; // Subcategory header height
+        } else if (item.type === 'items-grid') {
+          const itemCount = item.items?.length || 0;
+          const rows = Math.ceil(itemCount / 2); // 2 columns
+          offset += rows * 200; // Approximate height per row
+        }
+      }
+      
+      console.log(`📏 Calculated offset: ${offset}`);
+      
+      // Smooth scrolling with easing
+      setTimeout(() => {
+        console.log(`🔄 Smoothly scrolling to offset ${offset}`);
+        
+        // Calculate the distance to scroll for duration
+        const scrollDistance = Math.abs(offset - 0);
+        const animationDuration = Math.min(Math.max(scrollDistance / 2, 300), 800);
+        
+        console.log(`🎬 Animation duration: ${animationDuration}ms for distance: ${scrollDistance}px`);
+        
+        // Use the smooth scroll function
+        smoothScrollToOffset(offset, animationDuration);
+        
+      }, 200);
+      
+    } else {
+      console.log(`❌ Category not found in data`);
+      console.log(`🔍 Looking for category ID: ${categoryId}`);
+      console.log(`📋 Available category IDs:`, data.filter(item => item.type === 'category').map(item => item.category.id));
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#FF6B35" />
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
       
       {/* Enhanced Header */}
       <LinearGradient
@@ -545,35 +732,34 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       >
         <View style={styles.headerContent}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>←</Text>
+            <View style={styles.backArrow} />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
             <Text style={styles.marketTitle} numberOfLines={1}>
               {market.name?.['en-US'] || market.name?.ar || 'Haat Market'}
             </Text>
-            <Text style={styles.marketSubtitle} numberOfLines={1}>
-              {market.address?.['en-US'] || market.address?.ar || 'Food Delivery'}
-            </Text>
           </View>
           <TouchableOpacity style={styles.cartButton}>
             <Text style={styles.cartButtonText}>🛒</Text>
           </TouchableOpacity>
+
         </View>
       </LinearGradient>
 
       {/* Category Tabs */}
       <View style={styles.categoryTabsContainer}>
         <ScrollView
+          ref={categoryTabsScrollViewRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryTabsContent}
         >
-          {categories.filter(cat => !cat.hide).map((category, index) => (
+          {(selectedCategory ? [selectedCategory, ...categories.filter(cat => cat.id !== selectedCategory.id)] : categories).map((category, index) => (
             <TouchableOpacity
               key={category.id}
               style={[
                 styles.categoryTab,
-                selectedCategory?.id === category.id && styles.categoryTabActive
+                visibleCategory?.id === category.id && styles.categoryTabActive
               ]}
               onPress={() => {
                 console.log(`🎯 Category tab pressed: "${category.name}" (ID: ${category.id})`);
@@ -599,7 +785,7 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
             >
               <Text style={[
                 styles.categoryTabText,
-                selectedCategory?.id === category.id && styles.categoryTabTextActive
+                visibleCategory?.id === category.id && styles.categoryTabTextActive
               ]}>
                 {category.name}
               </Text>
@@ -609,19 +795,20 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       </View>
 
       {/* Subcategory Tabs */}
-      {selectedCategory && getCurrentSubCategoriesForTabs().length > 0 && (
+      {getCurrentSubCategoriesForTabs().length > 0 && (
         <View style={styles.subCategoryTabsContainer}>
           <ScrollView
+            ref={subCategoryTabsScrollViewRef}
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.subCategoryTabsContent}
           >
-            {getCurrentSubCategoriesForTabs().map((subCategory) => (
+            {(selectedSubCategory ? [selectedSubCategory, ...getCurrentSubCategoriesForTabs().filter(sub => sub.id !== selectedSubCategory.id)] : getCurrentSubCategoriesForTabs()).map((subCategory) => (
               <TouchableOpacity
                 key={subCategory.id}
                 style={[
                   styles.subCategoryTab,
-                  selectedSubCategory?.id === subCategory.id && styles.subCategoryTabActive
+                  visibleSubCategory?.id === subCategory.id && styles.subCategoryTabActive
                 ]}
                 onPress={() => {
                   console.log(`🎯 Subcategory tab pressed: "${subCategory.name}" (ID: ${subCategory.id})`);
@@ -631,7 +818,7 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
               >
                 <Text style={[
                   styles.subCategoryTabText,
-                  selectedSubCategory?.id === subCategory.id && styles.subCategoryTabTextActive
+                  visibleSubCategory?.id === subCategory.id && styles.subCategoryTabTextActive
                 ]}>
                   {subCategory.name}
                 </Text>
@@ -656,37 +843,62 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       )}
 
       {/* Content */}
-      {!isLoadingCategory && !categoryError && (
-        <FlatList
-          key={`category-${selectedCategory?.id || 'none'}`}
-          ref={flatListRef}
-          data={getFlatListData()}
-          renderItem={({ item }) => {
-            switch (item.type) {
-              case 'category':
-                return renderCategoryHeader(item.category);
-              case 'subcategory':
-                return renderSubCategoryHeader(item.subCategory!);
-              case 'items-grid':
-                return renderItemsGrid(item.items!);
-              default:
-                return null;
-            }
-          }}
-          keyExtractor={(item) => item.id}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
-          onScrollEndDrag={handleScrollEndDrag}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
-          initialNumToRender={5}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.flatListContent}
-        />
-      )}
+      <FlatList
+        key={`all-categories-${categories.length}-${selectedCategoryId || 'none'}`}
+        ref={flatListRef}
+        data={getFlatListData()}
+        renderItem={({ item }) => {
+          switch (item.type) {
+            case 'subcategory':
+              return renderSubCategoryHeader(item.subCategory!);
+            case 'items-grid':
+              return renderItemsGrid(item.items!);
+            default:
+              return null;
+          }
+        }}
+        keyExtractor={(item) => item.id}
+        onLayout={() => {
+          console.log('📱 FlatList layout completed');
+          if (selectedCategory) {
+            console.log('🎯 FlatList ready, selected category is now first, scrolling to top smoothly');
+            // Smooth scroll to top with easing
+            setTimeout(() => {
+              smoothScrollToOffset(0, 600);
+            }, 500);
+          }
+        }}
+        onScroll={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          updateVisibleItems(offsetY);
+        }}
+        onScrollEndDrag={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          // Only update tabs when scrolling stops for better UX
+          updateVisibleItems(offsetY);
+        }}
+        onMomentumScrollEnd={(event) => {
+          const offsetY = event.nativeEvent.contentOffset.y;
+          // Update tabs when momentum scrolling ends
+          updateVisibleItems(offsetY);
+        }}
+        onScrollBeginDrag={() => {
+          console.log('🎯 User started scrolling manually');
+        }}
+        initialNumToRender={5}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.flatListContent}
+        scrollEnabled={true}
+        bounces={true}
+        alwaysBounceVertical={false}
+        removeClippedSubviews={false}
+        style={{ flex: 1 }}
+        decelerationRate="normal"
+        snapToAlignment="start"
+        snapToInterval={0}
+      />
     </SafeAreaView>
   );
 };
@@ -697,37 +909,60 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   header: {
-    paddingTop: 10,
+    paddingTop: 70,
     paddingBottom: 20,
     paddingHorizontal: 20,
+    marginTop: -50,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 40,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 5,
   },
   backButtonText: {
     fontSize: 24,
     color: '#fff',
     fontWeight: 'bold',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    lineHeight: 24,
+    marginTop: Platform.OS === 'android' ? -2 : 0,
+  },
+  backArrow: {
+    width: 12,
+    height: 12,
+    borderLeftWidth: 2,
+    borderBottomWidth: 2,
+    borderColor: '#fff',
+    transform: [{ rotate: '45deg' }],
   },
   headerInfo: {
     flex: 1,
-    marginHorizontal: 16,
+    marginHorizontal: 20,
+    paddingHorizontal: 30,
+    paddingVertical: 10,
   },
   marketTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
+    paddingHorizontal: 20,
+    lineHeight: 28,
   },
   marketSubtitle: {
     fontSize: 14,
@@ -736,12 +971,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   cartButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 5,
   },
   cartButtonText: {
     fontSize: 20,
@@ -857,18 +1093,19 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
     overflow: 'hidden',
+    minHeight: 320,
   },
   itemImageContainer: {
     position: 'relative',
     width: '100%',
-    height: 120,
+    height: 150,
   },
   itemImage: {
     width: '100%',
@@ -886,57 +1123,90 @@ const styles = StyleSheet.create({
   },
   priceTag: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    minWidth: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   priceTagText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: '#FF6B35',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   itemInfo: {
-    padding: 12,
+    padding: 16,
+    flex: 1,
+    justifyContent: 'space-between',
+    minHeight: 140,
   },
   itemName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
-    lineHeight: 18,
+    marginBottom: 6,
+    lineHeight: 20,
+    minHeight: 40,
   },
   itemDescription: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
-    marginBottom: 8,
-    lineHeight: 16,
+    marginBottom: 10,
+    lineHeight: 18,
+    minHeight: 36,
+    flexShrink: 0,
+  },
+  itemPriceContainer: {
+    marginBottom: 16,
+    alignItems: 'flex-start',
+    paddingHorizontal: 0,
+    paddingVertical: 4,
+    alignSelf: 'stretch',
+  },
+  itemPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    textAlign: 'left',
   },
   itemActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 'auto',
+    paddingTop: 8,
   },
   addButton: {
     backgroundColor: '#FF6B35',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
     flex: 1,
-    marginRight: 8,
+    marginRight: 10,
+    minHeight: 44,
   },
   addButtonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
   },
   favoriteButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#f8f9fa',
     justifyContent: 'center',
     alignItems: 'center',
@@ -968,39 +1238,38 @@ const styles = StyleSheet.create({
   flatListContent: {
     paddingBottom: 20,
   },
-  selectedCategoryHeader: {
-    borderWidth: 2,
-    borderColor: '#FF6B35',
+  summaryContainer: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  summaryGradient: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  summaryTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FF6B35',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  summarySubtitle: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   visibleCategoryHeader: {
     borderWidth: 2,
     borderColor: '#FF6B35',
   },
-  selectedCategoryHeaderTitle: {
-    color: '#FF6B35',
-  },
   visibleCategoryHeaderTitle: {
-    color: '#FF6B35',
-  },
-  selectedCategoryHeaderSubtitle: {
     color: '#FF6B35',
   },
   visibleCategoryHeaderSubtitle: {
     color: '#FF6B35',
-  },
-  selectedIndicator: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  selectedIndicatorText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   visibleIndicator: {
     position: 'absolute',
