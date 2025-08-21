@@ -5,50 +5,27 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
   Dimensions,
   FlatList,
-  Animated,
   StatusBar,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { MarketDetail as MarketDetailType, Category, SubCategory, Item, CategoryDetail } from '../types';
-import { getImageUrl, getCategoryDetail } from '../services/api';
+import { getCategoryDetail } from '../services/api';
+import {
+  MarketHeader,
+  CategoryTabs,
+  SubCategoryTabs,
+  CategoryHeader,
+  SubCategoryHeader,
+  ItemsGrid,
+} from '../components';
+import { SCROLL_CONFIG, FLATLIST_CONFIG, TIMEOUTS, LOADING_MESSAGES, ERROR_MESSAGES, ANIMATION_CONFIG, GRID_CONFIG } from '../constants';
 
 const { width, height } = Dimensions.get('window');
 
-// Grid configuration for items
-const GRID_COLUMNS = 2;
-const GRID_SPACING = 16;
-const GRID_MARGIN = 16;
-const ITEM_CARD_WIDTH = (width - (GRID_MARGIN * 2) - (GRID_SPACING * (GRID_COLUMNS - 1))) / GRID_COLUMNS;
 
-// Image component with fallback
-const ImageWithFallback: React.FC<{ imagePath: string; style: any }> = ({ imagePath, style }) => {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
-
-  if (imageError) {
-    return (
-      <View style={[style, { backgroundColor: '#f1f3f4', justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ fontSize: 32 }}>🍽️</Text>
-      </View>
-    );
-  }
-
-  return (
-    <Image
-      source={{ uri: getImageUrl(imagePath) }}
-      style={style}
-      resizeMode="cover"
-      onLoadStart={() => setImageLoading(true)}
-      onLoadEnd={() => setImageLoading(false)}
-      onError={() => setImageError(true)}
-    />
-  );
-};
 
 interface MarketDetailProps {
   market: MarketDetailType;
@@ -117,7 +94,7 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
         // Auto-scroll to the selected category after the component has rendered
         setTimeout(() => {
           scrollToCategory(category.id);
-        }, 500);
+        }, TIMEOUTS.SCROLL_DELAY_LAYOUT);
       }
     } else if (categories.length > 0) {
       // Set first category as default if none selected
@@ -155,7 +132,7 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       // Use a small delay to ensure smooth transition
       const timer = setTimeout(() => {
         smoothScrollCategoryTabsToVisible(visibleCategory);
-      }, 300);
+      }, TIMEOUTS.SCROLL_DELAY_EXTENDED);
       
       return () => clearTimeout(timer);
     }
@@ -167,7 +144,7 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       // Use a small delay to ensure smooth transition
       const timer = setTimeout(() => {
         smoothScrollSubCategoryTabsToVisible(visibleSubCategory);
-      }, 400);
+      }, TIMEOUTS.SCROLL_DELAY_SMOOTH);
       
       return () => clearTimeout(timer);
     }
@@ -197,18 +174,18 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       console.error('❌ Error loading category detail:', error);
       
       // Set error message based on error type
-      let errorMessage = 'Failed to load category details';
+      let errorMessage: string = ERROR_MESSAGES.CATEGORY_LOAD_FAILED;
       
       if (error.response) {
         if (error.response.status === 404) {
-          errorMessage = 'Category not found';
+          errorMessage = ERROR_MESSAGES.CATEGORY_NOT_FOUND;
         } else if (error.response.status === 500) {
-          errorMessage = 'Server error loading category';
+          errorMessage = ERROR_MESSAGES.SERVER_ERROR_CATEGORY;
         } else if (error.response.status >= 400) {
-          errorMessage = `Request failed (${error.response.status})`;
+          errorMessage = ERROR_MESSAGES.REQUEST_FAILED_CATEGORY;
         }
       } else if (error.request) {
-        errorMessage = 'Network error loading category';
+        errorMessage = ERROR_MESSAGES.NETWORK_ERROR_CATEGORY;
       } else if (error.message) {
         errorMessage = `Error: ${error.message}`;
       }
@@ -363,115 +340,16 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
   
   const renderCategoryHeader = (category: Category) => {
     const isVisible = visibleCategory && category.id === visibleCategory.id;
-    
-    // Calculate total items for this category
-    const totalItems = category.subCategories?.reduce((total, sub) => {
-      return total + (sub.items?.length || 0);
-    }, 0) || 0;
-    
-    return (
-      <View style={[
-        styles.categoryHeader,
-        isVisible && styles.visibleCategoryHeader
-      ]}>
-        <LinearGradient
-          colors={isVisible
-            ? ['rgba(255,107,53,0.15)', 'rgba(255,107,53,0.08)']
-            : ['rgba(255,107,53,0.1)', 'rgba(255,107,53,0.05)']
-          }
-          style={styles.categoryHeaderGradient}
-        >
-          <Text style={[
-            styles.categoryHeaderTitle,
-            isVisible && styles.visibleCategoryHeaderTitle
-          ]}>
-            {category.name}
-          </Text>
-          <Text style={[
-            styles.categoryHeaderSubtitle,
-            isVisible && styles.visibleCategoryHeaderSubtitle
-          ]}>
-            {category.subCategories?.length || 0} subcategories • {totalItems} items
-          </Text>
-          {isVisible && (
-            <View style={styles.visibleIndicator}>
-              <Text style={styles.visibleIndicatorText}>👁️ Visible</Text>
-            </View>
-          )}
-        </LinearGradient>
-      </View>
-    );
+    return <CategoryHeader category={category} isVisible={!!isVisible} />;
   };
 
   const renderSubCategoryHeader = (subCategory: SubCategory) => {
     const isVisible = visibleSubCategory && subCategory.id === visibleSubCategory.id;
-    
-    return (
-      <View style={[
-        styles.subCategoryHeader,
-        isVisible && styles.visibleSubCategoryHeader
-      ]}>
-        <Text style={[
-          styles.subCategoryTitle,
-          isVisible && styles.visibleSubCategoryTitle
-        ]}>
-          {subCategory.name}
-        </Text>
-        <Text style={[
-          styles.subCategoryCount,
-          isVisible && styles.visibleSubCategoryCount
-        ]}>
-          {subCategory.items?.length || 0} items
-        </Text>
-      </View>
-    );
+    return <SubCategoryHeader subCategory={subCategory} isVisible={!!isVisible} />;
   };
 
   const renderItemsGrid = (items: Item[]) => (
-    <View style={styles.itemsGridContainer}>
-      <View style={styles.itemsGrid}>
-        {items.map((item, index) => (
-          <TouchableOpacity
-            key={item.id}
-            style={[
-              styles.itemCard,
-              {
-                width: ITEM_CARD_WIDTH,
-                marginRight: (index + 1) % GRID_COLUMNS === 0 ? 0 : GRID_SPACING,
-                marginBottom: GRID_SPACING,
-              }
-            ]}
-            activeOpacity={0.8}
-          >
-            <View style={styles.itemImageContainer}>
-              {item.image ? (
-                <ImageWithFallback imagePath={item.image} style={styles.itemImage} />
-              ) : (
-                <View style={styles.placeholderImage}>
-                  <Text style={styles.placeholderText}>🍽️</Text>
-                </View>
-              )}
-
-            </View>
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-              {item.description && (
-                <Text style={styles.itemDescription} numberOfLines={2}>{item.description}</Text>
-              )}
-              <View style={styles.itemPriceContainer}>
-                <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>
-              </View>
-              <View style={styles.itemActions}>
-                <TouchableOpacity style={styles.addButton} activeOpacity={0.7}>
-                  <Text style={styles.addButtonText}>+ Add</Text>
-                </TouchableOpacity>
-              
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+    <ItemsGrid items={items} />
   );
 
 
@@ -513,7 +391,7 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
 
   const updateVisibleItems = (offsetY: number) => {
     // Throttle updates to prevent too frequent state changes
-    if (Math.abs(offsetY - (lastScrollOffset.current || 0)) < 50) {
+    if (Math.abs(offsetY - (lastScrollOffset.current || 0)) < SCROLL_CONFIG.THROTTLE_THRESHOLD) {
       return;
     }
     
@@ -531,20 +409,20 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       let itemHeight = 0;
       
       if (item.type === 'category') {
-        itemHeight = 120; // Category header height
+        itemHeight = SCROLL_CONFIG.CATEGORY_HEADER_HEIGHT;
       } else if (item.type === 'subcategory') {
-        itemHeight = 80; // Subcategory header height
+        itemHeight = SCROLL_CONFIG.SUBCATEGORY_HEADER_HEIGHT;
       } else if (item.type === 'items-grid') {
         const itemCount = item.items?.length || 0;
-        const rows = Math.ceil(itemCount / 2); // 2 columns
-        itemHeight = rows * 200; // Approximate height per row
+        const rows = Math.ceil(itemCount / GRID_CONFIG.COLUMNS);
+        itemHeight = rows * SCROLL_CONFIG.ITEM_ROW_HEIGHT;
       }
       
       // Check if this item is currently visible in the viewport
       const itemStart = accumulatedHeight;
       const itemEnd = accumulatedHeight + itemHeight;
       const viewportStart = offsetY;
-      const viewportEnd = offsetY + 800; // Approximate viewport height
+      const viewportEnd = offsetY + SCROLL_CONFIG.VIEWPORT_HEIGHT;
       
       // Item is visible if it intersects with the viewport
       if (itemStart < viewportEnd && itemEnd > viewportStart) {
@@ -602,8 +480,8 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
     
     if (categoryIndex !== -1) {
       // Calculate the target scroll position with better centering
-      const tabWidth = 120;
-      const containerWidth = 300; // Approximate container width
+      const tabWidth = SCROLL_CONFIG.TAB_WIDTH_CATEGORY;
+      const containerWidth = SCROLL_CONFIG.CONTAINER_WIDTH_CATEGORY;
       const targetScrollX = Math.max(0, (categoryIndex * tabWidth) - (containerWidth / 2) + (tabWidth / 2));
       
       console.log(`🎯 Smooth scrolling category tabs to show "${category.name}" at position ${targetScrollX}`);
@@ -628,8 +506,8 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
     
     if (subCategoryIndex !== -1) {
       // Calculate the target scroll position with better centering
-      const tabWidth = 100;
-      const containerWidth = 250; // Approximate container width for subcategories
+      const tabWidth = SCROLL_CONFIG.TAB_WIDTH_SUBCATEGORY;
+      const containerWidth = SCROLL_CONFIG.CONTAINER_WIDTH_SUBCATEGORY;
       const targetScrollX = Math.max(0, (subCategoryIndex * tabWidth) - (containerWidth / 2) + (tabWidth / 2));
       
       console.log(`🎯 Smooth scrolling subcategory tabs to show "${subCategory.name}" at position ${targetScrollX}`);
@@ -668,11 +546,8 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       return;
     }
     
-    // Simple approach: find the category in the data and calculate offset
+    // Find the category index in the data
     const data = getFlatListData();
-    console.log('📊 Data length:', data.length);
-    console.log('📊 Data items:', data.map(item => ({ type: item.type, categoryId: item.category?.id, categoryName: item.category?.name })));
-    
     const categoryIndex = data.findIndex(item =>
       item.type === 'category' && item.category.id === categoryId
     );
@@ -680,38 +555,15 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
     if (categoryIndex !== -1) {
       console.log(`✅ Found category at index: ${categoryIndex}`);
       
-      // Calculate offset based on item heights
-      let offset = 0;
-      for (let i = 0; i < categoryIndex; i++) {
-        const item = data[i];
-        if (item.type === 'category') {
-          offset += 120; // Category header height
-        } else if (item.type === 'subcategory') {
-          offset += 80; // Subcategory header height
-        } else if (item.type === 'items-grid') {
-          const itemCount = item.items?.length || 0;
-          const rows = Math.ceil(itemCount / 2); // 2 columns
-          offset += rows * 200; // Approximate height per row
-        }
-      }
+      // Use scrollToIndex for more reliable scrolling
+      flatListRef.current.scrollToIndex({
+        index: categoryIndex,
+        animated: true,
+        viewPosition: 0, // Align to top
+        viewOffset: 0,   // No additional offset
+      });
       
-      console.log(`📏 Calculated offset: ${offset}`);
-      
-      // Smooth scrolling with easing
-      setTimeout(() => {
-        console.log(`🔄 Smoothly scrolling to offset ${offset}`);
-        
-        // Calculate the distance to scroll for duration
-        const scrollDistance = Math.abs(offset - 0);
-        const animationDuration = Math.min(Math.max(scrollDistance / 2, 300), 800);
-        
-        console.log(`🎬 Animation duration: ${animationDuration}ms for distance: ${scrollDistance}px`);
-        
-        // Use the smooth scroll function
-        smoothScrollToOffset(offset, animationDuration);
-        
-      }, 200);
-      
+      console.log(`✅ Scroll to index ${categoryIndex} initiated`);
     } else {
       console.log(`❌ Category not found in data`);
       console.log(`🔍 Looking for category ID: ${categoryId}`);
@@ -724,114 +576,50 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent animated />
       
       {/* Enhanced Header */}
-      <LinearGradient
-        colors={['#FF6B35', '#F7931E']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <View style={styles.backArrow} />
-          </TouchableOpacity>
-          <View style={styles.headerInfo}>
-            <Text style={styles.marketTitle} numberOfLines={1}>
-              {market.name?.['en-US'] || market.name?.ar || 'Haat Market'}
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.cartButton}>
-            <Text style={styles.cartButtonText}>🛒</Text>
-          </TouchableOpacity>
-
-        </View>
-      </LinearGradient>
+      <MarketHeader market={market} onBack={onBack} />
 
       {/* Category Tabs */}
-      <View style={styles.categoryTabsContainer}>
-        <ScrollView
-          ref={categoryTabsScrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryTabsContent}
-        >
-          {(selectedCategory ? [selectedCategory, ...categories.filter(cat => cat.id !== selectedCategory.id)] : categories).map((category, index) => (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryTab,
-                visibleCategory?.id === category.id && styles.categoryTabActive
-              ]}
-              onPress={() => {
-                console.log(`🎯 Category tab pressed: "${category.name}" (ID: ${category.id})`);
-                setSelectedCategory(category);
-                setVisibleCategory(category);
-                
-                // Auto-select the first subcategory of the newly selected category
-                if (category.subCategories && category.subCategories.length > 0) {
-                  const firstSubCategory = category.subCategories[0];
-                  console.log(`🎯 Auto-selecting first subcategory: "${firstSubCategory.name}" (ID: ${firstSubCategory.id})`);
-                  setSelectedSubCategory(firstSubCategory);
-                  setVisibleSubCategory(firstSubCategory);
-                } else {
-                  setSelectedSubCategory(null);
-                  setVisibleSubCategory(null);
-                }
-                
-                // Scroll to the newly selected category
-                setTimeout(() => {
-                  scrollToCategory(category.id);
-                }, 100);
-              }}
-            >
-              <Text style={[
-                styles.categoryTabText,
-                visibleCategory?.id === category.id && styles.categoryTabTextActive
-              ]}>
-                {category.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      <CategoryTabs
+        categories={categories}
+        selectedCategory={selectedCategory}
+        visibleCategory={visibleCategory}
+        onCategoryPress={(category) => {
+          console.log(`🎯 Category tab pressed: "${category.name}" (ID: ${category.id})`);
+          setSelectedCategory(category);
+          setVisibleCategory(category);
+          
+          // Auto-select the first subcategory of the newly selected category
+          if (category.subCategories && category.subCategories.length > 0) {
+            const firstSubCategory = category.subCategories[0];
+            console.log(`🎯 Auto-selecting first subcategory: "${firstSubCategory.name}" (ID: ${firstSubCategory.id})`);
+            setSelectedSubCategory(firstSubCategory);
+            setVisibleSubCategory(firstSubCategory);
+          } else {
+            setSelectedSubCategory(null);
+            setVisibleSubCategory(null);
+          }
+          
+                  // Scroll to the newly selected category immediately
+          scrollToCategory(category.id);
+        }}
+      />
 
       {/* Subcategory Tabs */}
-      {getCurrentSubCategoriesForTabs().length > 0 && (
-        <View style={styles.subCategoryTabsContainer}>
-          <ScrollView
-            ref={subCategoryTabsScrollViewRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.subCategoryTabsContent}
-          >
-            {(selectedSubCategory ? [selectedSubCategory, ...getCurrentSubCategoriesForTabs().filter(sub => sub.id !== selectedSubCategory.id)] : getCurrentSubCategoriesForTabs()).map((subCategory) => (
-              <TouchableOpacity
-                key={subCategory.id}
-                style={[
-                  styles.subCategoryTab,
-                  visibleSubCategory?.id === subCategory.id && styles.subCategoryTabActive
-                ]}
-                onPress={() => {
-                  console.log(`🎯 Subcategory tab pressed: "${subCategory.name}" (ID: ${subCategory.id})`);
-                  setSelectedSubCategory(subCategory);
-                  setVisibleSubCategory(subCategory);
-                }}
-              >
-                <Text style={[
-                  styles.subCategoryTabText,
-                  visibleSubCategory?.id === subCategory.id && styles.subCategoryTabTextActive
-                ]}>
-                  {subCategory.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      <SubCategoryTabs
+        subCategories={getCurrentSubCategoriesForTabs()}
+        selectedSubCategory={selectedSubCategory}
+        visibleSubCategory={visibleSubCategory}
+        onSubCategoryPress={(subCategory) => {
+          console.log(`🎯 Subcategory tab pressed: "${subCategory.name}" (ID: ${subCategory.id})`);
+          setSelectedSubCategory(subCategory);
+          setVisibleSubCategory(subCategory);
+        }}
+      />
 
       {/* Loading State for Category */}
       {isLoadingCategory && (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading category details...</Text>
+          <Text style={styles.loadingText}>{LOADING_MESSAGES.CATEGORY_DETAILS}</Text>
         </View>
       )}
 
@@ -849,8 +637,7 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
         data={getFlatListData()}
         renderItem={({ item }) => {
           switch (item.type) {
-            case 'subcategory':
-              return renderSubCategoryHeader(item.subCategory!);
+           
             case 'items-grid':
               return renderItemsGrid(item.items!);
             default:
@@ -858,34 +645,58 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
           }
         }}
         keyExtractor={(item) => item.id}
+        getItemLayout={(data, index) => {
+          // Calculate the height of each item for reliable scrolling
+          if (!data || !data[index]) {
+            return { length: 0, offset: 0, index };
+          }
+          
+          const item = data[index];
+          let itemHeight = 0;
+          
+          if (item.type === 'category') {
+            itemHeight = SCROLL_CONFIG.CATEGORY_HEADER_HEIGHT;
+          } else if (item.type === 'subcategory') {
+            itemHeight = SCROLL_CONFIG.SUBCATEGORY_HEADER_HEIGHT;
+          } else if (item.type === 'items-grid') {
+            const itemCount = item.items?.length || 0;
+            const rows = Math.ceil(itemCount / GRID_CONFIG.COLUMNS);
+            itemHeight = rows * SCROLL_CONFIG.ITEM_ROW_HEIGHT;
+          }
+          
+          // Calculate offset by summing heights of previous items
+          let offset = 0;
+          for (let i = 0; i < index; i++) {
+            const prevItem = data[i];
+            if (prevItem && prevItem.type === 'category') {
+              offset += SCROLL_CONFIG.CATEGORY_HEADER_HEIGHT;
+            } else if (prevItem && prevItem.type === 'subcategory') {
+              offset += SCROLL_CONFIG.SUBCATEGORY_HEADER_HEIGHT;
+            } else if (prevItem && prevItem.type === 'items-grid') {
+              const prevItemCount = prevItem.items?.length || 0;
+              const prevRows = Math.ceil(prevItemCount / GRID_CONFIG.COLUMNS);
+              offset += prevRows * SCROLL_CONFIG.ITEM_ROW_HEIGHT;
+            }
+          }
+          
+          return {
+            length: itemHeight,
+            offset: offset,
+            index: index,
+          };
+        }}
         onLayout={() => {
           console.log('📱 FlatList layout completed');
-          if (selectedCategory) {
-            console.log('🎯 FlatList ready, selected category is now first, scrolling to top smoothly');
-            // Smooth scroll to top with easing
-            setTimeout(() => {
-              smoothScrollToOffset(0, 600);
-            }, 500);
-          }
-        }}
-        onScroll={(event) => {
-          const offsetY = event.nativeEvent.contentOffset.y;
-          updateVisibleItems(offsetY);
         }}
         onScrollEndDrag={(event) => {
           const offsetY = event.nativeEvent.contentOffset.y;
-          // Only update tabs when scrolling stops for better UX
           updateVisibleItems(offsetY);
         }}
         onMomentumScrollEnd={(event) => {
           const offsetY = event.nativeEvent.contentOffset.y;
-          // Update tabs when momentum scrolling ends
           updateVisibleItems(offsetY);
         }}
-        onScrollBeginDrag={() => {
-          console.log('🎯 User started scrolling manually');
-        }}
-        initialNumToRender={5}
+        initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={10}
         showsVerticalScrollIndicator={false}
@@ -898,6 +709,8 @@ const MarketDetail: React.FC<MarketDetailProps> = ({ market, selectedCategoryId,
         decelerationRate="normal"
         snapToAlignment="start"
         snapToInterval={0}
+        scrollEventThrottle={16}
+        overScrollMode="auto"
       />
     </SafeAreaView>
   );
@@ -908,312 +721,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
-  header: {
-    paddingTop: 70,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    marginTop: -50,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 40,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 5,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#fff',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    includeFontPadding: false,
-    lineHeight: 24,
-    marginTop: Platform.OS === 'android' ? -2 : 0,
-  },
-  backArrow: {
-    width: 12,
-    height: 12,
-    borderLeftWidth: 2,
-    borderBottomWidth: 2,
-    borderColor: '#fff',
-    transform: [{ rotate: '45deg' }],
-  },
-  headerInfo: {
-    flex: 1,
-    marginHorizontal: 20,
-    paddingHorizontal: 30,
-    paddingVertical: 10,
-  },
-  marketTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
-    paddingHorizontal: 20,
-    lineHeight: 28,
-  },
-  marketSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  cartButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 5,
-  },
-  cartButtonText: {
-    fontSize: 20,
-    color: '#fff',
-  },
-  categoryTabsContainer: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e5e9',
-  },
-  categoryTabsContent: {
-    paddingHorizontal: 16,
-  },
-  categoryTab: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    marginRight: 12,
-    borderRadius: 20,
-    backgroundColor: '#f8f9fa',
-    marginVertical: 8,
-  },
-  categoryTabActive: {
-    backgroundColor: '#FF6B35',
-  },
-  categoryTabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  categoryTabTextActive: {
-    color: '#fff',
-  },
-  subCategoryTabsContainer: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e1e5e9',
-  },
-  subCategoryTabsContent: {
-    paddingHorizontal: 16,
-  },
-  subCategoryTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 16,
-    backgroundColor: '#f8f9fa',
-    marginVertical: 6,
-  },
-  subCategoryTabActive: {
-    backgroundColor: '#FF6B35',
-  },
-  subCategoryTabText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#666',
-  },
-  subCategoryTabTextActive: {
-    color: '#fff',
-  },
-  categoryHeader: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  categoryHeaderGradient: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  categoryHeaderTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FF6B35',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  categoryHeaderSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  subCategoryHeader: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  subCategoryTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  subCategoryCount: {
-    fontSize: 14,
-    color: '#666',
-  },
-  itemsGridContainer: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-  },
-  itemsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  itemCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
-    overflow: 'hidden',
-    minHeight: 320,
-  },
-  itemImageContainer: {
-    position: 'relative',
-    width: '100%',
-    height: 150,
-  },
-  itemImage: {
-    width: '100%',
-    height: '100%',
-  },
-  placeholderImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f1f3f4',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 32,
-  },
-  priceTag: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    minWidth: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  priceTagText: {
-    color: '#FF6B35',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  itemInfo: {
-    padding: 16,
-    flex: 1,
-    justifyContent: 'space-between',
-    minHeight: 140,
-  },
-  itemName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
-    lineHeight: 20,
-    minHeight: 40,
-  },
-  itemDescription: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 10,
-    lineHeight: 18,
-    minHeight: 36,
-    flexShrink: 0,
-  },
-  itemPriceContainer: {
-    marginBottom: 16,
-    alignItems: 'flex-start',
-    paddingHorizontal: 0,
-    paddingVertical: 4,
-    alignSelf: 'stretch',
-  },
-  itemPrice: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    textAlign: 'left',
-  },
-  itemActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 'auto',
-    paddingTop: 8,
-  },
-  addButton: {
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    flex: 1,
-    marginRight: 10,
-    minHeight: 44,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  favoriteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  favoriteButtonText: {
-    fontSize: 16,
-  },
+
+
+
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1238,77 +749,8 @@ const styles = StyleSheet.create({
   flatListContent: {
     paddingBottom: 20,
   },
-  summaryContainer: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  summaryGradient: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  summaryTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FF6B35',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  summarySubtitle: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  visibleCategoryHeader: {
-    borderWidth: 2,
-    borderColor: '#FF6B35',
-  },
-  visibleCategoryHeaderTitle: {
-    color: '#FF6B35',
-  },
-  visibleCategoryHeaderSubtitle: {
-    color: '#FF6B35',
-  },
-  visibleIndicator: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  visibleIndicatorText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  visibleSubCategoryHeader: {
-    borderWidth: 2,
-    borderColor: '#FF6B35',
-  },
-  visibleSubCategoryTitle: {
-    color: '#FF6B35',
-  },
-  visibleSubCategoryCount: {
-    color: '#FF6B35',
-  },
-  visibleSubCategoryIndicator: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#FF6B35',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  visibleSubCategoryIndicatorText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
+
+
 });
 
 export default MarketDetail; 

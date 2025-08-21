@@ -4,12 +4,12 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import MarketsList from './components/MarketsList';
-import MarketDetail from './components/MarketDetail';
-import LoadingSpinner from './components/LoadingSpinner';
+import { MarketsList, MarketDetail } from './screens';
+import { LoadingSpinner } from './components';
 import { getMarketDetail, transformApiDataToComponentFormat } from './services/api';
 import { MarketDetail as MarketDetailType, Category } from './types';
 import { mockMarketData } from './data/mockData';
+import { API_CONFIG, LOADING_MESSAGES, ERROR_MESSAGES } from './constants';
 
 export type RootStackParamList = {
   MarketsList: undefined;
@@ -39,7 +39,7 @@ export default function App() {
       setError(null);
       
       console.log('🔄 Fetching market data from Haat API...');
-      const apiData = await getMarketDetail(4532);
+      const apiData = await getMarketDetail(API_CONFIG.MARKET_ID);
       console.log('✅ API call successful, transforming data...');
       
       // Transform the real API data to component-compatible format
@@ -53,20 +53,20 @@ export default function App() {
       console.error('❌ Error loading market data:', err);
       
       // Handle different types of errors
-      let errorMessage = 'Failed to load market data. Please try again.';
+      let errorMessage: string = ERROR_MESSAGES.MARKET_DATA_FAILED;
       
       if (err.response) {
         // Server responded with error status
         if (err.response.status === 404) {
-          errorMessage = 'Market not found. Please check the market ID.';
+          errorMessage = ERROR_MESSAGES.MARKET_NOT_FOUND;
         } else if (err.response.status === 500) {
-          errorMessage = 'Server error. Please try again later.';
+          errorMessage = ERROR_MESSAGES.SERVER_ERROR;
         } else if (err.response.status >= 400) {
-          errorMessage = `Request failed (${err.response.status}). Please try again.`;
+          errorMessage = ERROR_MESSAGES.REQUEST_FAILED;
         }
       } else if (err.request) {
         // Network error
-        errorMessage = 'Network error. Please check your internet connection.';
+        errorMessage = ERROR_MESSAGES.NETWORK_ERROR;
       } else if (err.message) {
         // Other error
         errorMessage = `Error: ${err.message}`;
@@ -77,7 +77,7 @@ export default function App() {
       // Fallback to mock data if API fails
       console.log('🔄 Falling back to mock data...');
       setMarketData(mockMarketData as any);
-      setTransformedCategories(mockMarketData.categories);
+      setTransformedCategories((mockMarketData as any).categories || []);
     } finally {
       setIsLoading(false);
       setIsRetrying(false);
@@ -89,7 +89,7 @@ export default function App() {
   };
 
   if (isLoading) {
-    return <LoadingSpinner message="Loading Haat Food Delivery..." />;
+    return <LoadingSpinner message={LOADING_MESSAGES.MARKET_DATA} />;
   }
 
   if (error && !marketData) {

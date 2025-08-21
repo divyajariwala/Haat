@@ -1,13 +1,11 @@
 import axios from 'axios';
 import { MarketDetail, CategoryDetail, Category, SubCategory, Item } from '../types';
-
-const BASE_URL = 'https://user-new-app-staging.internal.haat.delivery/api';
-const IMAGE_BASE_URL = 'https://im-staging.haat.delivery/';
+import { API_CONFIG } from '../constants';
 
 // Create axios instance with better configuration
 const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 15000, // Increased timeout for better reliability
+  baseURL: API_CONFIG.BASE_URL,
+  timeout: API_CONFIG.TIMEOUT,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -186,7 +184,7 @@ export const getMarketDetail = async (marketId: number): Promise<MarketDetail> =
 export const getCategoryDetail = async (marketId: number, categoryId: number): Promise<CategoryDetail> => {
   try {
     console.log(`🔄 Fetching category details for market: ${marketId}, category: ${categoryId}`);
-    console.log(`📡 API URL: ${BASE_URL}/markets/${marketId}/categories/${categoryId}`);
+    console.log(`📡 API URL: ${API_CONFIG.BASE_URL}/markets/${marketId}/categories/${categoryId}`);
     
     const response = await api.get(`/markets/${marketId}/categories/${categoryId}`);
     
@@ -232,7 +230,7 @@ export const getImageUrl = (imagePath: string): string => {
     return imagePath;
   }
   
-  const fullUrl = `${IMAGE_BASE_URL}${imagePath}`;
+  const fullUrl = `${API_CONFIG.IMAGE_BASE_URL}${imagePath}`;
   console.log('getImageUrl: Constructed URL:', fullUrl);
   return fullUrl;
 };
@@ -253,8 +251,8 @@ export const checkApiHealth = async (): Promise<boolean> => {
 // Helper function to get API status
 export const getApiStatus = () => {
   return {
-    baseUrl: BASE_URL,
-    imageBaseUrl: IMAGE_BASE_URL,
+    baseUrl: API_CONFIG.BASE_URL,
+    imageBaseUrl: API_CONFIG.IMAGE_BASE_URL,
     timeout: api.defaults.timeout,
     isConfigured: true,
   };

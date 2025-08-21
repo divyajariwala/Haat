@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text, Animated, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS, ANIMATION_CONFIG, FONT_SIZE, FONT_WEIGHT, SPACING, BORDER_RADIUS, EMOJI_ICONS, LOADING_MESSAGES, PLACEHOLDER_TEXT } from '../constants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -8,7 +9,7 @@ interface LoadingSpinnerProps {
   message?: string;
 }
 
-const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' }) => {
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = LOADING_MESSAGES.DEFAULT }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -19,12 +20,12 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' 
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.2,
-          duration: 1000,
+          duration: ANIMATION_CONFIG.PULSE_DURATION,
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1000,
+          duration: ANIMATION_CONFIG.PULSE_DURATION,
           useNativeDriver: true,
         }),
       ])
@@ -34,7 +35,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' 
     const rotate = Animated.loop(
       Animated.timing(rotateAnim, {
         toValue: 1,
-        duration: 3000,
+        duration: ANIMATION_CONFIG.ROTATE_DURATION,
         useNativeDriver: true,
       })
     );
@@ -42,7 +43,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' 
     // Fade in animation
     const fadeIn = Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 800,
+      duration: ANIMATION_CONFIG.FADE_DURATION,
       useNativeDriver: true,
     });
 
@@ -63,7 +64,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' 
 
   return (
     <LinearGradient
-      colors={['#FF6B35', '#F7931E', '#FFD93D']}
+      colors={COLORS.GRADIENT.PRIMARY_EXTENDED}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}
@@ -71,16 +72,16 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' 
       {/* Floating Food Icons */}
       <View style={styles.floatingIcons}>
         <Animated.View style={[styles.iconCircle, { transform: [{ scale: pulseAnim }] }]}>
-          <Text style={styles.iconText}>🍕</Text>
+          <Text style={styles.iconText}>{EMOJI_ICONS.PIZZA}</Text>
         </Animated.View>
         <Animated.View style={[styles.iconCircle, styles.iconCircle2, { transform: [{ scale: pulseAnim }] }]}>
-          <Text style={styles.iconText}>🍔</Text>
+          <Text style={styles.iconText}>{EMOJI_ICONS.BURGER}</Text>
         </Animated.View>
         <Animated.View style={[styles.iconCircle, styles.iconCircle3, { transform: [{ scale: pulseAnim }] }]}>
-          <Text style={styles.iconText}>🍜</Text>
+          <Text style={styles.iconText}>{EMOJI_ICONS.NOODLES}</Text>
         </Animated.View>
         <Animated.View style={[styles.iconCircle, styles.iconCircle4, { transform: [{ scale: pulseAnim }] }]}>
-          <Text style={styles.iconText}>🍰</Text>
+          <Text style={styles.iconText}>{EMOJI_ICONS.CAKE}</Text>
         </Animated.View>
       </View>
 
@@ -94,17 +95,17 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({ message = 'Loading...' 
               { transform: [{ rotate: rotateInterpolate }] }
             ]}
           >
-            <Text style={styles.logoText}>🍽️</Text>
+            <Text style={styles.logoText}>{EMOJI_ICONS.FOOD}</Text>
           </Animated.View>
         </View>
 
         {/* Loading Text */}
-        <Text style={styles.brandTitle}>Haat</Text>
-        <Text style={styles.brandSubtitle}>Food Delivery</Text>
+        <Text style={styles.brandTitle}>{PLACEHOLDER_TEXT.HERO_TITLE}</Text>
+        <Text style={styles.brandSubtitle}>{PLACEHOLDER_TEXT.HERO_SUBTITLE}</Text>
         
         {/* Loading Indicator */}
         <View style={styles.indicatorContainer}>
-          <ActivityIndicator size="large" color="#fff" />
+          <ActivityIndicator size="large" color={COLORS.WHITE} />
           <Text style={styles.message}>{message}</Text>
         </View>
 
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 60,
     height: 60,
-    borderRadius: 30,
+    borderRadius: BORDER_RADIUS.CIRCLE,
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -158,36 +159,36 @@ const styles = StyleSheet.create({
     left: '15%',
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: BORDER_RADIUS.CIRCLE,
   },
   iconCircle3: {
     top: '60%',
     right: '10%',
     width: 45,
     height: 45,
-    borderRadius: 22.5,
+    borderRadius: BORDER_RADIUS.CIRCLE,
   },
   iconCircle4: {
     top: '70%',
     left: '25%',
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: BORDER_RADIUS.CIRCLE,
   },
   iconText: {
-    fontSize: 24,
+    fontSize: FONT_SIZE.XXL,
   },
   loadingContent: {
     alignItems: 'center',
     zIndex: 2,
   },
   logoContainer: {
-    marginBottom: 30,
+    marginBottom: SPACING.XXXL,
   },
   logoCircle: {
     width: 120,
     height: 120,
-    borderRadius: 60,
+    borderRadius: BORDER_RADIUS.CIRCLE,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -195,35 +196,35 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.3)',
   },
   logoText: {
-    fontSize: 60,
+    fontSize: FONT_SIZE.XXXL,
   },
   brandTitle: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
+    fontSize: FONT_SIZE.XXXL,
+    fontWeight: FONT_WEIGHT.BOLD,
+    color: COLORS.WHITE,
+    marginBottom: SPACING.LG,
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   brandSubtitle: {
-    fontSize: 20,
+    fontSize: FONT_SIZE.XL,
     color: 'rgba(255,255,255,0.9)',
-    marginBottom: 40,
-    fontWeight: '600',
+    marginBottom: SPACING.XXXL,
+    fontWeight: FONT_WEIGHT.SEMIBOLD,
     textShadowColor: 'rgba(0,0,0,0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   indicatorContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: SPACING.XXXL,
   },
   message: {
-    marginTop: 16,
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: '500',
+    marginTop: SPACING.LG,
+    fontSize: FONT_SIZE.LG,
+    color: COLORS.WHITE,
+    fontWeight: FONT_WEIGHT.MEDIUM,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.2)',
     textShadowOffset: { width: 0, height: 1 },
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: 'rgba(255,255,255,0.8)',
-    marginHorizontal: 6,
+    marginHorizontal: SPACING.MD,
   },
   bottomDecoration: {
     position: 'absolute',

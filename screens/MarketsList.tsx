@@ -14,44 +14,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Category } from '../types';
 import { getImageUrl } from '../services/api';
+import { ImageWithFallback } from '../components';
+import { GRID_CONFIG, COLORS, SPACING, BORDER_RADIUS, FONT_SIZE, FONT_WEIGHT, SHADOW_STYLES, PLACEHOLDER_TEXT, EMOJI_ICONS } from '../constants';
 
 const { width, height } = Dimensions.get('window');
 
 // Grid configuration
-const GRID_COLUMNS = 2;
-const GRID_SPACING = 16;
-const GRID_MARGIN = 20;
-const CARD_WIDTH = (width - (GRID_MARGIN * 2) - (GRID_SPACING * (GRID_COLUMNS - 1))) / GRID_COLUMNS;
+const CARD_WIDTH = (width - (GRID_CONFIG.MARGIN_LARGE * 2) - (GRID_CONFIG.SPACING * (GRID_CONFIG.COLUMNS - 1))) / GRID_CONFIG.COLUMNS;
 
 interface MarketsListProps {
   categories: Category[];
   onCategoryPress: (category: Category) => void;
 }
 
-// Image component with fallback
-const ImageWithFallback: React.FC<{ imagePath: string; style: any }> = ({ imagePath, style }) => {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
 
-  if (imageError) {
-    return (
-      <View style={[style, { backgroundColor: '#f1f3f4', justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ fontSize: 32 }}>🍽️</Text>
-      </View>
-    );
-  }
-
-  return (
-    <Image
-      source={{ uri: getImageUrl(imagePath) }}
-      style={style}
-      resizeMode="cover"
-      onLoadStart={() => setImageLoading(true)}
-      onLoadEnd={() => setImageLoading(false)}
-      onError={() => setImageError(true)}
-    />
-  );
-};
 
 const MarketsList: React.FC<MarketsListProps> = ({ categories, onCategoryPress }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -74,16 +50,16 @@ const MarketsList: React.FC<MarketsListProps> = ({ categories, onCategoryPress }
       
       {/* Hero Header with Gradient */}
       <LinearGradient
-        colors={['#FF6B35', '#F7931E', '#FFD93D']}
+        colors={COLORS.GRADIENT.PRIMARY_EXTENDED}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.heroHeader}
       >
         <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>Haat</Text>
-          <Text style={styles.heroSubtitle}>Delicious Food Delivered</Text>
+          <Text style={styles.heroTitle}>{PLACEHOLDER_TEXT.HERO_TITLE}</Text>
+          <Text style={styles.heroSubtitle}>{PLACEHOLDER_TEXT.HERO_SUBTITLE}</Text>
           <Text style={styles.heroDescription}>
-            Discover amazing flavors from the best restaurants in town
+            {PLACEHOLDER_TEXT.HERO_DESCRIPTION}
           </Text>
         </View>
         
@@ -92,11 +68,11 @@ const MarketsList: React.FC<MarketsListProps> = ({ categories, onCategoryPress }
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Text style={styles.searchIcon}>{EMOJI_ICONS.SEARCH}</Text>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search for your favorite food..."
-            placeholderTextColor="#999"
+            placeholder={PLACEHOLDER_TEXT.SEARCH}
+            placeholderTextColor={COLORS.GRAY.DARK}
             value={searchQuery}
             onChangeText={setSearchQuery}
             autoCapitalize="none"
@@ -151,8 +127,8 @@ const MarketsList: React.FC<MarketsListProps> = ({ categories, onCategoryPress }
                   styles.categoryCard,
                   { 
                     width: CARD_WIDTH,
-                    marginRight: (index + 1) % GRID_COLUMNS === 0 ? 0 : GRID_SPACING,
-                    marginBottom: GRID_SPACING,
+                                marginRight: (index + 1) % GRID_CONFIG.COLUMNS === 0 ? 0 : GRID_CONFIG.SPACING,
+            marginBottom: GRID_CONFIG.SPACING,
                   }
                 ]}
                 onPress={() => onCategoryPress(category)}
@@ -397,7 +373,7 @@ const styles = StyleSheet.create({
   },
   gridContainer: {
     flex: 1,
-    paddingHorizontal: GRID_MARGIN,
+            paddingHorizontal: GRID_CONFIG.MARGIN_LARGE,
   },
   gridContent: {
     paddingBottom: 20,
