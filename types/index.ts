@@ -181,7 +181,6 @@ export interface MarketDetail {
   currentWorkingHourRange: WorkingHourRange;
   businessStatusInMainPage: BusinessStatus;
 }
-
 // Real API Category Detail type
 export interface CategoryDetail {
   id: number;

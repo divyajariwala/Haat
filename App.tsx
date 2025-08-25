@@ -37,26 +37,16 @@ export default function App() {
         setIsLoading(true);
       }
       setError(null);
-      
-      console.log('🔄 Fetching market data from Haat API...');
       const apiData = await getMarketDetail(API_CONFIG.MARKET_ID);
-      console.log('✅ API call successful, transforming data...');
-      
-      // Transform the real API data to component-compatible format
       const transformed = transformApiDataToComponentFormat(apiData);
-      console.log('✅ Data transformation successful:', transformed);
       
       setMarketData(apiData);
       setTransformedCategories(transformed.categories);
       
     } catch (err: any) {
-      console.error('❌ Error loading market data:', err);
-      
-      // Handle different types of errors
       let errorMessage: string = ERROR_MESSAGES.MARKET_DATA_FAILED;
       
       if (err.response) {
-        // Server responded with error status
         if (err.response.status === 404) {
           errorMessage = ERROR_MESSAGES.MARKET_NOT_FOUND;
         } else if (err.response.status === 500) {
@@ -74,8 +64,6 @@ export default function App() {
       
       setError(errorMessage);
       
-      // Fallback to mock data if API fails
-      console.log('🔄 Falling back to mock data...');
       setMarketData(mockMarketData as any);
       setTransformedCategories((mockMarketData as any).categories || []);
     } finally {
@@ -137,9 +125,11 @@ export default function App() {
               <MarketsList
                 categories={transformedCategories}
                 onCategoryPress={(category: Category) => {
+                  const selectedCategoryIndex = transformedCategories.findIndex(c => c.id === category.id);
                   navigation.navigate('MarketDetail', {
                     marketId: marketData?.id || 4532,
                     selectedCategoryId: category.id,
+                    selectedCategoryIndex,
                     categories: transformedCategories,
                   });
                 }}
@@ -151,6 +141,7 @@ export default function App() {
               <MarketDetail
                 market={marketData!}
                 selectedCategoryId={route.params?.selectedCategoryId}
+                selectedCategoryIndex={route.params?.selectedCategoryIndex}
                 categories={route.params?.categories || []}
                 onBack={() => navigation.goBack()}
               />
@@ -160,9 +151,7 @@ export default function App() {
       </NavigationContainer>
     </SafeAreaProvider>
   );
-}
-
-const styles = StyleSheet.create({
+}const styles = StyleSheet.create({
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -202,3 +191,5 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 });
+
+
